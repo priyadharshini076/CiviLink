@@ -142,7 +142,7 @@ class CiviLinkAssistant:
     
     def _fallback_intent_detection(self, message: str) -> IntentType:
         """Fallback intent detection using regex patterns"""
-        message_lower = message.lower()
+        message_lower = str(message).lower()
         
         for intent_type, patterns in self.intent_patterns.items():
             for pattern in patterns:
@@ -291,6 +291,10 @@ class CiviLinkAssistant:
     def process_message(self, user_id: str, message: Any, message_type: str = "text") -> Dict[str, Any]:
         """Main message processing pipeline with LLM integration"""
         session = self.get_or_create_session(user_id)
+
+        # Normalize message early to avoid type errors in downstream logic
+        if message_type == "text":
+            message = "" if message is None else str(message)
         
         # Handle voice messages (Whisper)
         if message_type in ["voice", "voice_url"]:
