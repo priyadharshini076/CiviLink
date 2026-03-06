@@ -110,7 +110,8 @@ class CiviLinkAssistant:
             
             # Use LLM for primary intent detection (optional)
             if not self.intent_detector:
-                raise RuntimeError("LLM intent detector not configured")
+                self.logger.warning("LLM intent detector not configured, using fallback.")
+                return self._fallback_intent_detection_result(message)
 
             intent_result = self.intent_detector.detect_intent(message, user_context)
             
@@ -125,16 +126,19 @@ class CiviLinkAssistant:
             return intent_result
             
         except Exception as e:
-            self.logger.error(f"LLM intent detection failed, using fallback: {str(e)}")
-            # Fallback to pattern-based detection
-            legacy_intent = self._fallback_intent_detection(message)
-            return IntentResult(
-                intent=legacy_intent,
-                confidence=0.5,
-                language="en",
-                assistance_level=AssistanceLevel.NORMAL,
-                entities={}
-            )
+            self.logger.exception(f"LLM intent detection failed, using fallback: {str(e)}")
+            return self._fallback_intent_detection_result(message)
+
+    def _fallback_intent_detection_result(self, message: str) -> IntentResult:
+        """Helper to return IntentResult from pattern-based fallback"""
+        legacy_intent = self._fallback_intent_detection(message)
+        return IntentResult(
+            intent=legacy_intent,
+            confidence=0.5,
+            language="en",
+            assistance_level=AssistanceLevel.NORMAL,
+            entities={}
+        )
     
     def _fallback_intent_detection(self, message: str) -> IntentType:
         """Fallback intent detection using regex patterns"""
