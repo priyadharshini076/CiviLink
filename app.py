@@ -45,15 +45,10 @@ consent_manager = ConsentManager()
 multilingual_llm = MultilingualLLM()
 twilio_handler = TwilioWebhookHandler()
 
-# -----------------------------
-# Telegram setup
-# -----------------------------
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-
-if TELEGRAM_TOKEN:
-    bot = Bot(token=TELEGRAM_TOKEN)
-else:
-    bot = None
+# Telegram bot
+telegram_token = os.getenv("TELEGRAM_TOKEN", "").strip()
+bot = Bot(token=telegram_token) if telegram_token else None
+if not bot:
     logger.warning("Telegram bot token not set!")
 
 # =========================================================
@@ -104,48 +99,40 @@ def whatsapp_webhook():
 def telegram_webhook():
 
     try:
-        update = request.get_json()
+        update = request.get_json(silent=True) or {}
 
-        logger.info(f"Telegram update received")
+        logger.info("Telegram update received")
 
         if "message" not in update:
-            return jsonify({"status": "ignored"})
+            return jsonify({"status": "ignored"}), 200
 
         message = update["message"]
-
         chat_id = message["chat"]["id"]
         user_id = str(message["from"]["id"])
         text = message.get("text", "")
 
         if not text:
-            return jsonify({"status": "empty message"})
+            return jsonify({"status": "empty message"}), 200
 
         logger.info(f"Telegram message: {text}")
 
-        # Process message through AI assistant
         result = assistant.process_message(user_id, text)
+        response_text = result.get("response", "Sorry, I couldn't understand.")
 
-        response_text = result.get(
-            "response",
-            "Sorry, I couldn't understand."
-        )
+        if not bot:
+            logger.warning("TELEGRAM_TOKEN not set; cannot reply to Telegram")
+            return jsonify({"status": "no_bot"}), 200
 
-        # Send reply
-        if bot:
-            bot.send_message(
-                chat_id=chat_id,
-                text=response_text
-            )
-
-        return jsonify({"status": "ok"})
+        bot.send_message(chat_id=chat_id, text=response_text)
+        return jsonify({"status": "ok"}), 200
 
     except TelegramError as te:
-        logger.error(f"Telegram API error: {te}")
-        return jsonify({"error": "telegram error"}), 500
+        logger.exception(f"Telegram API error: {te}")
+        return jsonify({"status": "telegram_error"}), 200
 
     except Exception as e:
-        logger.error(f"Telegram webhook error: {e}")
-        return jsonify({"error": "server error"}), 500
+        logger.exception(f"Telegram webhook error: {e}")
+        return jsonify({"status": "server_error"}), 200
 
 
 # =========================================================
