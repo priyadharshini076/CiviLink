@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 import re
 import logging
+import os
 from core.llm_intent_detector import LLMIntentDetector, IntentType, AssistanceLevel, IntentResult
 from multilingual.multilingual_llm import MultilingualLLM, MultilingualResponse
 
@@ -107,7 +108,10 @@ class CiviLinkAssistant:
                 "consent_given": session.consent_given
             }
             
-            # Use LLM for primary intent detection
+            # Use LLM for primary intent detection (optional)
+            if not self.intent_detector:
+                raise RuntimeError("LLM intent detector not configured")
+
             intent_result = self.intent_detector.detect_intent(message, user_context)
             
             # Update session with detected information

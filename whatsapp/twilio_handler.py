@@ -65,7 +65,7 @@ class TwilioWebhookHandler:
             return str(twiml)
             
         except Exception as e:
-            self.logger.error(f"Twilio processing error: {str(e)}")
+            self.logger.exception(f"Twilio processing error: {str(e)}")
             twiml = MessagingResponse()
             twiml.message("I'm having some technical trouble. Please try again later.")
             return str(twiml)
